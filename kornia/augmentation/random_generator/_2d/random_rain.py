@@ -21,6 +21,34 @@ class RainGenerator(RandomGeneratorBase):
         repr = f"number_of_drops={self.number_of_drops}, drop_height={self.drop_height}, drop_width={self.drop_width}"
         return repr
 
+    def draw_line(image: torch.Tensor, params_val: dict[str, Tensor], streak_intensity=0.02) -> torch.Tensor:
+    """ 
+    Draws rain streaks on the image based on the provided parameters
+    :param 'params_val': dictionary containing rain parameters:
+          'number_of_drops_factor': number of rain streaks/drops.
+          'coordinates_factor': starting coordinates for each drop.
+          'drop_height_factor': height for each drop/streak.
+          'drop_width_factor': width for each drop/streak (usually 1 for streak).
+    :param 'streak_intensity': float 
+    :returns: torch.Tensor
+    """
+    coords = params_val['coordinates_factor']
+    heights = params_val['drop_height_factor']
+    widths = params_val['drop_width_factor']
+    B, C, H, W = image.shape
+    for i in range(B):  # loop over each image in the batch
+        num_drops = params_val['number_of_drops_factor'][i].item()
+        for j in range(num_drops):
+            # calculate starting and ending coordinates for the streak
+            y_start = int(coords[i, j, 0].item() * H)
+            x_start = int(coords[i, j, 1].item() * W)
+            y_end = y_start + heights[i].item()
+            x_end = x_start + widths[i].item()
+            image[i, :, y_start:y_end, x_start:x_end] += streak_intensity  # draw the streak on the image
+    image = torch.clamp(image, 0, 1)  # clamp values to be in [0, 1] range
+    return image
+
+    
     def make_samplers(self, device: torch.device, dtype: torch.dtype) -> None:
         number_of_drops = _range_bound(
             self.number_of_drops,
